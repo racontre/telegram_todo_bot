@@ -61,6 +61,7 @@ def delete_task_data(user_id: int, task_id: int):
     sqlite_delete_query = """DELETE FROM tasks WHERE user_id = ? AND task_id = ?"""
     try:
         cursor.execute(sqlite_delete_query, (user_id, task_id,))
+        conn.commit()
         LOGGER.info(f"Task ID {task_id} has been deleted.")
     except Exception as e:
         LOGGER.info(f"Unable to delete Task ID {task_id}: ", e)

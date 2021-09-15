@@ -12,7 +12,6 @@ Send /start to initiate the conversation.
 Press Ctrl-C on the command line or send a signal to the process to stop the
 bot.
 """
-import bot.database as database
 
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import (
@@ -24,20 +23,14 @@ from telegram.ext import (
     ConversationHandler,
     CallbackContext,
 )
-
-# Enable logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
-)
-
-logger = logging.getLogger(__name__)
+from bot import LOGGER
+import bot.database as database
 
 NAME, TIME, DESC = range(3)
 
 
 def newtask(update: Update, context: CallbackContext) -> int:
     """Starts the conversation and asks the user about their gender."""
-    update.callback_query.answer()
     context.bot.send_message(chat_id=update.effective_chat.id, 
     text='Hi! Enter the name of your new task. '
         'Send /cancel to stop talking to me.\n\n')
@@ -47,7 +40,7 @@ def newtask(update: Update, context: CallbackContext) -> int:
 def name(update: Update, context: CallbackContext) -> int:
     """Stores the name and asks for a set time."""
     user = update.message.from_user
-    logger.info("New task by %s: %s", user.first_name, update.message.text)
+    LOGGER.info("New task by %s: %s", user.first_name, update.message.text)
     context.user_data["name"] = update.message.text
     update.message.reply_text(
         'I see! Does the task have a set time? (Format: HH:MM)'
@@ -57,11 +50,11 @@ def name(update: Update, context: CallbackContext) -> int:
     return TIME
 
 
-def date(update: Update, context: CallbackContext) -> int:
-    """Stores the due date and asks for a description."""
+def time(update: Update, context: CallbackContext) -> int:
+    """Stores the time and asks for a description."""
     user = update.message.from_user
-    LOGGER.info("%s entered date: %s", user.first_name, update.message.text)
-    context.user_data["date"] = update.message.text
+    LOGGER.info("%s entered time: %s", user.first_name, update.message.text)
+    context.user_data["time"] = update.message.text
     update.message.reply_text(
         'Gorgeous! Now, describe the task please, or send /skip if you don\'t want to.'
     )
@@ -69,11 +62,11 @@ def date(update: Update, context: CallbackContext) -> int:
     return DESC
 
 
-def skip_date(update: Update, context: CallbackContext) -> int:
+def skip_time(update: Update, context: CallbackContext) -> int:
     """Skips the photo and asks for a location."""
     user = update.message.from_user
-    context.user_data["date"] = ""
-    LOGGER.info("User %s did not set a date.", user.first_name)
+    context.user_data["time"] = ""
+    LOGGER.info("User %s did not set time.", user.first_name)
     update.message.reply_text(
         'Now, describe your task please, or send /skip.'
     )
@@ -109,7 +102,7 @@ def save_task(update: Update, context: CallbackContext) -> int:
     """ Sends the data to the database. """
     user_id = update.effective_chat.id
     task_title = context.user_data['name']
-    due_date = context.user_data['date']
+    due_date = context.user_data['time']
     desc = context.user_data['desc']
     if (database.create_task(user_id, task_title, due_date, desc)):
         update.message.reply_text(
@@ -137,8 +130,8 @@ conv_handler = ConversationHandler(
             CallbackQueryHandler(callback  = newtask, pattern='^New Task?')],
         states={
             NAME: [MessageHandler(Filters.text & ~Filters.command, name)],
-            TIME: [MessageHandler(Filters.text & ~Filters.command, date), 
-                    CommandHandler('skip', skip_date)
+            TIME: [MessageHandler(Filters.text & ~Filters.command, time), 
+                    CommandHandler('skip', skip_time)
                     ],
             DESC: [MessageHandler(Filters.text & ~Filters.command, desc),
                     CommandHandler('skip', skip_desc)
