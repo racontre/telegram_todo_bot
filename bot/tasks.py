@@ -11,7 +11,7 @@ from telegram.ext import (
 import bot.database as database
 import bot.keyboards as keyboards
 
-TASK_ID, USER_ID, NAME, TIME, STATE, DESC = range (6)
+TASK_ID, USER_ID, NAME, TIME, STATUS, DESC = range (6)
 
 def all_tasks_message(update: Update, context: CallbackContext):
     records = database.retrieve_all_tasks(update.effective_chat.id) 
@@ -58,7 +58,7 @@ def send_task(update: Update, context: CallbackContext, row):
             ]
         reply_markup = InlineKeyboardMarkup(keyboard) 
         task_string = f"""<b>Name:</b> {row[NAME]}
-<b>Status:</b> {row[STATE]}
+<b>Status:</b> {row[STATUS]}
 <b>Due:</b> {row[TIME]}
 <b>Description:</b> {row[DESC]}"""
         update.callback_query.edit_message_text(text=task_string, 
@@ -77,28 +77,31 @@ def delete_task(update: Update, task_id: int):
     reply_markup=reply_markup)
     pass
 
-def update_name(update: Update, context: CallbackContext, task_id: int, name: str):
+def update_name(update: Update, context: CallbackContext, task_id: int):
     name = update.message.from_user
-    database.update_task_name(update.effective_chat.id, task_id, name)
+    database.update_task('name', update.effective_chat.id, task_id, name)
     pass
 
 def update_state(update: Update, context: CallbackContext):
     pass
     
-def update_desc(update: Update, context: CallbackContext, desc: str):
+def update_desc(update: Update, context: CallbackContext, task_id: int):
+    desc = update.message.from_user
+    database.update_task('desc', update.effective_chat.id, task_id, name)
     pass
 
 def update_time(update: Update, context: CallbackContext, time: str):
+    time = update.message.from_user
+    database.update_task('time', update.effective_chat.id, task_id, name)
     pass
     
 """update_conversation = ConversationHandler(
         entry_points=[CallbackQueryHandler(callback = update_message, pattern='^UpdateID \d+$')],
         states={
-            NAME: [MessageHandler(Filters.text & ~Filters.command, name)],
-            TIME: [MessageHandler(Filters.text & ~Filters.command, date), 
-                    CommandHandler('skip', skip_date)],
-            DESC: [MessageHandler(Filters.text & ~Filters.command, desc),
-                    CommandHandler('skip', skip_desc)]
+            NAME: [MessageHandler(Filters.regex(^{1, 20}$) & ~Filters.command, update_name)],
+            TIME: [MessageHandler(Filters.regex(^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$) & 
+            ~Filters.command, update_time)],
+            DESC: [MessageHandler(Filters.regex(^{1, 100}$) & ~Filters.command, update_desc)]
             
         },
         fallbacks=[CommandHandler('cancel', cancel)],

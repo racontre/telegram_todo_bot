@@ -48,13 +48,14 @@ def retrieve_task_data(user_id: int, task_id: int):
         LOGGER.info(f"There are no results for TaskID {task_id} and UserID {user_id}")
     return row
 
-def update_task_name(user_id: int, task_id: int, name: str):
-    sqlite_update_query = """UPDATE tasks SET name = ? WHERE user_id = ? AND task_id = ?"""
+def update_task(column_name: str, user_id: int, task_id: int, name: str):
+    sqlite_update_query = """UPDATE tasks SET ? = ? WHERE user_id = ? AND task_id = ?"""
     try:
-        cursor.execute(sqlite_update_query, (name, user_id, task_id))
-        LOGGER.info(f"Task ID {task_id} has been updated. (name field)")
+        cursor.execute(sqlite_update_query, (column_name, name, user_id, task_id))
+        conn.commit()
+        LOGGER.info(f"Task ID {task_id} has been updated. ({column_name})")
     except Exception as e:
-        LOGGER.info(f"Unable to update name for Task ID {task_id}: ", e)
+        LOGGER.info(f"Unable to update {column_name} for Task ID {task_id}: ", e)
     pass
     
 def delete_task_data(user_id: int, task_id: int):

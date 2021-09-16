@@ -130,7 +130,7 @@ conv_handler = ConversationHandler(
             CallbackQueryHandler(callback  = newtask, pattern='^New Task?')],
         states={
             NAME: [MessageHandler(Filters.text & ~Filters.command, name)],
-            TIME: [MessageHandler(Filters.text & ~Filters.command, time), 
+            TIME: [MessageHandler(Filters.regex('^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$') & ~Filters.command, time), 
                     CommandHandler('skip', skip_time)
                     ],
             DESC: [MessageHandler(Filters.text & ~Filters.command, desc),
