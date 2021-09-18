@@ -8,19 +8,43 @@ from telegram.ext import (
     ConversationHandler
 )
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+import datetime as dt
+import pytz #TypeError: Only timezones from the pytz library are supported
 from bot.config import BOT_TOKEN
 from bot import LOGGER, database, dispatcher, updater, bot
 import bot.newtask_conversation as nw
 import bot.tasks as tasks
 import bot.keyboards as keyboards
 
+def callback_alarm(context):
+     context.bot.send_message(chat_id=context.job.context, text='Test alarm')
 
-def handler(update: Update, context: CallbackContext):
-    """Handles text input"""
-    data = context.user_data["menu"]
-    if data == "Update Name":
-        name = update.message.from_user
-        tasks.update_name(update, context, task_id, name)
+def daily_callback_timer(update: Update, context: CallbackContext, row):
+    context.bot.send_message(chat_id=update.effective_chat.id,
+                      text='Test timer')
+    try:
+    ###
+        task_time = dt.datetime.strptime(row[tasks.TIME], "%H:%M")
+        print(task_time)
+        local = pytz.timezone('Europe/Moscow') #get from db or user data
+        naive_dt = dt.datetime(year = 2000, month = 1, day = 1, 
+        hour=task_time.hour, minute=task_time.minute) #get h and m
+        local_dt = local.localize(naive_dt, is_dst = None)
+        utc_dt = local_dt.astimezone(pytz.utc)
+    ###
+        jobDaily = updater.job_queue.run_daily(callback_alarm, utc_dt.time(), 
+        days=(0, 1, 2, 3, 4, 5, 6), context=row[tasks.USER_ID])
+        print(jobDaily.next_t)
+    except Exception as e:
+        LOGGER.error(f'Could not set job: {e} for {row}')
+
+
+def set_all_jobs(update: Update, context: CallbackContext):
+    records = database.retrieve_all_tasks(update.effective_chat.id)
+    if records != []:
+        for row in records:
+            if row[tasks.TIME] is not None:
+                daily_callback_timer(update, context, row)
     pass
 
 def start(update: Update, context: CallbackContext):
@@ -66,10 +90,10 @@ def button(update: Update, context: CallbackContext) -> None:
 
 def main() -> None:
     LOGGER.info("Bot Started!")
-    
     dispatcher.add_handler(nw.conv_handler)
     dispatcher.add_handler(CommandHandler('start', start))
     dispatcher.add_handler(CommandHandler('alltasks', tasks.all_tasks_message))
+    dispatcher.add_handler(CommandHandler('jobs', set_all_jobs))
     dispatcher.add_handler(CallbackQueryHandler(button))
     
     updater.start_polling()

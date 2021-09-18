@@ -33,6 +33,16 @@ def retrieve_all_tasks(user_id: int):
         return None
     return records
 
+def retrieve_global_tasks():
+    sqlite_select_query = """SELECT * from tasks"""
+    try:
+        cursor.execute(sqlite_select_query)
+        records = cursor.fetchall()
+    except Exception as e:
+        LOGGER.info(f"Unable to retrieve tasks: ", e)
+        return None
+    return records
+
 def retrieve_task_data(user_id: int, task_id: int):
     """Returns a single task. The task_id is unique in the database"""
     sqlite_select_query = """SELECT * from tasks WHERE user_id = ? AND task_id = ?"""

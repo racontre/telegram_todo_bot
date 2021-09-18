@@ -27,12 +27,13 @@ from bot import LOGGER
 import bot.database as database
 
 NAME, TIME, DESC = range(3)
-
+max_desc = 100
+max_name = 20
 
 def newtask(update: Update, context: CallbackContext) -> int:
     """Starts the conversation and asks the user about their gender."""
     context.bot.send_message(chat_id=update.effective_chat.id, 
-    text='Hi! Enter the name of your new task. '
+    text=f'Hi! Enter the name of your new task. (max {max_name} characters) \n'
         'Send /cancel to stop talking to me.\n\n')
     return NAME
 
@@ -56,7 +57,7 @@ def time(update: Update, context: CallbackContext) -> int:
     LOGGER.info("%s entered time: %s", user.first_name, update.message.text)
     context.user_data["time"] = update.message.text
     update.message.reply_text(
-        'Gorgeous! Now, describe the task please, or send /skip if you don\'t want to.'
+        f'Gorgeous! Now, describe the task please, (max {max_desc} characters) or send /skip if you don\'t want to.'
     )
 
     return DESC
@@ -68,7 +69,7 @@ def skip_time(update: Update, context: CallbackContext) -> int:
     context.user_data["time"] = ""
     LOGGER.info("User %s did not set time.", user.first_name)
     update.message.reply_text(
-        'Now, describe your task please, or send /skip.'
+        f'Now, describe your task please, (max {max_desc} characters) or send /skip.'
     )
 
     return DESC
@@ -129,11 +130,11 @@ conv_handler = ConversationHandler(
         entry_points=[CommandHandler('newtask', newtask), 
             CallbackQueryHandler(callback  = newtask, pattern='^New Task?')],
         states={
-            NAME: [MessageHandler(Filters.text & ~Filters.command, name)],
+            NAME: [MessageHandler(Filters.regex(fr'^.{{1,{max_name}}}$') & ~Filters.command, name)],
             TIME: [MessageHandler(Filters.regex('^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$') & ~Filters.command, time), 
                     CommandHandler('skip', skip_time)
                     ],
-            DESC: [MessageHandler(Filters.text & ~Filters.command, desc),
+            DESC: [MessageHandler(Filters.regex(fr'^.{{1,{max_desc}}}$') & ~Filters.command, desc),
                     CommandHandler('skip', skip_desc)
                     ]
         },

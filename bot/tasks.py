@@ -48,7 +48,7 @@ def send_task(update: Update, context: CallbackContext, row):
     if row is not None:
         keyboard = [
             [
-                InlineKeyboardButton("📝 Update", callback_data=f'UpdateID {row[TASK_ID]}'),
+                #InlineKeyboardButton("📝 Update", callback_data=f'UpdateID {row[TASK_ID]}'),
                 InlineKeyboardButton("🗑 Delete", callback_data=f'DeleteID {row[TASK_ID]}')
             ],
                 [ 
