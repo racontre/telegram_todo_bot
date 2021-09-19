@@ -57,10 +57,10 @@ def send_task(update: Update, context: CallbackContext, row):
                 ]
             ]
         reply_markup = InlineKeyboardMarkup(keyboard) 
-        task_string = f"""<b>Name:</b> {row[NAME]}
-<b>Status:</b> {row[STATUS]}
-<b>Due:</b> {row[TIME]}
-<b>Description:</b> {row[DESC]}"""
+        task_string = f"<b>Name:</b> {row[NAME]}"
+                        f"<b>Status:</b> {row[STATUS]}"
+                        f"<b>Due:</b> {row[TIME]}"
+                        f"<b>Description:</b> {row[DESC]}"
         update.callback_query.edit_message_text(text=task_string, 
         parse_mode=ParseMode.HTML, reply_markup=reply_markup)
     else:

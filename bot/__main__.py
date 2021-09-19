@@ -16,8 +16,10 @@ import bot.newtask_conversation as nw
 import bot.tasks as tasks
 import bot.keyboards as keyboards
 
-def callback_alarm(context):
-     context.bot.send_message(chat_id=context.job.context, text='Test alarm')
+def callback_alarm(update, context, row):
+     context.bot.send_message(chat_id=context.job.context, 
+     text=f"Task Reminder!")
+     tasks.send_task(update, context, row)
 
 def daily_callback_timer(update: Update, context: CallbackContext, row):
     context.bot.send_message(chat_id=update.effective_chat.id,
@@ -25,18 +27,17 @@ def daily_callback_timer(update: Update, context: CallbackContext, row):
     try:
     ###
         task_time = dt.datetime.strptime(row[tasks.TIME], "%H:%M")
-        print(task_time)
         local = pytz.timezone('Europe/Moscow') #get from db or user data
         naive_dt = dt.datetime(year = 2000, month = 1, day = 1, 
         hour=task_time.hour, minute=task_time.minute) #get h and m
         local_dt = local.localize(naive_dt, is_dst = None)
         utc_dt = local_dt.astimezone(pytz.utc)
     ###
-        jobDaily = updater.job_queue.run_daily(callback_alarm, utc_dt.time(), 
-        days=(0, 1, 2, 3, 4, 5, 6), context=row[tasks.USER_ID])
-        print(jobDaily.next_t)
+        jobDaily = updater.job_queue.run_daily(callback_alarm(update, context, row), 
+        utc_dt.time(), days=(0, 1, 2, 3, 4, 5, 6), context=row[tasks.USER_ID])
+        print(f"UTC: {jobDaily.next_t}")
     except Exception as e:
-        LOGGER.error(f'Could not set job: {e} for {row}')
+        LOGGER.error(f'Could not set job: {e} . The task: {row}')
 
 
 def set_all_jobs(update: Update, context: CallbackContext):
