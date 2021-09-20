@@ -107,7 +107,7 @@ def save_task(update: Update, context: CallbackContext) -> int:
     desc = context.user_data['desc']
     if (database.create_task(user_id, task_title, due_date, desc)):
         update.message.reply_text(
-            'Done'
+            'Done. To turn on the reminders use the /job command.'
         )
     else:
         update.message.reply_text(

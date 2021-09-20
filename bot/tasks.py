@@ -13,6 +13,9 @@ import bot.keyboards as keyboards
 
 TASK_ID, USER_ID, NAME, TIME, STATUS, DESC = range (6)
 
+status = {0: 'Unfinished',
+          1: 'Done'}
+
 def all_tasks_message(update: Update, context: CallbackContext):
     records = database.retrieve_all_tasks(update.effective_chat.id) 
     if records != []:
@@ -43,26 +46,25 @@ def update_message(update: Update, context: CallbackContext, task_id: int):
     text="Я потом это сделаю мне пока неинтересно", reply_markup=reply_markup)
     pass
 
-def send_task(update: Update, context: CallbackContext, row):
+def task_message(update: Update, context: CallbackContext, row):
     """ Takes row (a tuple from the database) and sends the data to user """
     if row is not None:
         keyboard = [
             [
-                #InlineKeyboardButton("📝 Update", callback_data=f'UpdateID {row[TASK_ID]}'),
+                InlineKeyboardButton("📝 Update", callback_data=f'UpdateID {row[TASK_ID]}'),
                 InlineKeyboardButton("🗑 Delete", callback_data=f'DeleteID {row[TASK_ID]}')
             ],
                 [ 
                 InlineKeyboardButton("✅ Mark as finished", callback_data=f'FinishedID {row[TASK_ID]}'),
-                
+                InlineKeyboardButton("🚨 Turn the reminder on/off", callback_data=f'JobID {row[TASK_ID]}'),
                 ]
             ]
         reply_markup = InlineKeyboardMarkup(keyboard) 
-        task_string = f"<b>Name:</b> {row[NAME]}"
-                        f"<b>Status:</b> {row[STATUS]}"
-                        f"<b>Due:</b> {row[TIME]}"
-                        f"<b>Description:</b> {row[DESC]}"
-        update.callback_query.edit_message_text(text=task_string, 
-        parse_mode=ParseMode.HTML, reply_markup=reply_markup)
+        task_string = (f"<b>Name:</b> {row[NAME]}\n"
+        f"<b>Status:</b> {status[row[STATUS]]}\n"
+        f"<b>Due:</b> {row[TIME]}\n"
+        f"<b>Description:</b> {row[DESC]}\n")
+        return reply_markup, task_string
     else:
         context.bot.send_message(chat_id=update.effective_chat.id, 
         text="Could not output the task")
@@ -71,7 +73,7 @@ def send_task(update: Update, context: CallbackContext, row):
 def delete_task(update: Update, task_id: int):
     """ Deletes a single task from the database """
     database.delete_task_data(update.effective_chat.id, task_id)
-    
+    # job.schedule_removal()
     reply_markup = InlineKeyboardMarkup(keyboards.default)
     update.callback_query.edit_message_text(text=f"The task has been deleted...",
     reply_markup=reply_markup)

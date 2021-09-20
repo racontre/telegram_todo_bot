@@ -7,7 +7,7 @@ from telegram.ext import (
     CallbackContext,
     ConversationHandler
 )
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, ParseMode
 import datetime as dt
 import pytz #TypeError: Only timezones from the pytz library are supported
 from bot.config import BOT_TOKEN
@@ -16,37 +16,55 @@ import bot.newtask_conversation as nw
 import bot.tasks as tasks
 import bot.keyboards as keyboards
 
-def callback_alarm(update, context, row):
-     context.bot.send_message(chat_id=context.job.context, 
-     text=f"Task Reminder!")
-     tasks.send_task(update, context, row)
+def job_exists(update: Update, context: CallbackContext, task_id: int):
+    job_names = [job.name for job in context.job_queue.jobs()]
+    if f'{task_id}' in job_names:
+        LOGGER.info(f"Job ID {task_id} exists.")
+        return True
+    else:
+        LOGGER.info(f"Job ID {task_id} doesn't exist.")
+        return False
+    LOGGER.error('Unreachable code? in job_exists')
 
-def daily_callback_timer(update: Update, context: CallbackContext, row):
-    context.bot.send_message(chat_id=update.effective_chat.id,
-                      text='Test timer')
-    try:
-    ###
-        task_time = dt.datetime.strptime(row[tasks.TIME], "%H:%M")
-        local = pytz.timezone('Europe/Moscow') #get from db or user data
-        naive_dt = dt.datetime(year = 2000, month = 1, day = 1, 
-        hour=task_time.hour, minute=task_time.minute) #get h and m
-        local_dt = local.localize(naive_dt, is_dst = None)
-        utc_dt = local_dt.astimezone(pytz.utc)
-    ###
-        jobDaily = updater.job_queue.run_daily(callback_alarm(update, context, row), 
-        utc_dt.time(), days=(0, 1, 2, 3, 4, 5, 6), context=row[tasks.USER_ID])
-        print(f"UTC: {jobDaily.next_t}")
-    except Exception as e:
-        LOGGER.error(f'Could not set job: {e} . The task: {row}')
+def stop_job_queue(context: CallbackContext):
+    context.job_queue.stop()
+    pass
+
+def set_daily_job(update: Update, context: CallbackContext, row):
+    def callback_alarm(context: CallbackContext):
+        context.bot.task_message(chat_id=context.job.context, text='Test alarm')
+        keyboard, msg = tasks.task_message(context.job.context, context, row)
+        context.bot.send_message(text=task_string, 
+        parse_mode=ParseMode.HTML, reply_markup=keyboard)
+    if row is not []:
+        try:
+        ###
+            task_time = dt.datetime.strptime(row[tasks.TIME], "%H:%M")
+            local = pytz.timezone('Europe/Moscow') #get from db or user data
+            naive_dt = dt.datetime(year = 2000, month = 1, day = 1, 
+            hour=task_time.hour, minute=task_time.minute) #get h and m
+            local_dt = local.localize(naive_dt, is_dst = None)
+            utc_dt = local_dt.astimezone(pytz.utc)
+        ###
+            jobDaily = updater.job_queue.run_daily(callback_alarm, 
+            utc_dt.time(), days=(0, 1, 2, 3, 4, 5, 6), context=row[tasks.USER_ID], name = f'{row[tasks.TASK_ID]}')
+            LOGGER.info(f"UTC: {jobDaily.next_t}")
+        except Exception as e:
+            LOGGER.error(f'Could not set daily job: {e} . The task: {row}')
 
 
 def set_all_jobs(update: Update, context: CallbackContext):
     records = database.retrieve_all_tasks(update.effective_chat.id)
     if records != []:
         for row in records:
-            if row[tasks.TIME] is not None:
-                daily_callback_timer(update, context, row)
+            if row[tasks.TIME] is not None and not job_exists(update, context, row[tasks.TASK_ID]):
+                set_daily_job(update, context, row)
+    job_names = [job.name for job in context.job_queue.jobs()]
+    context.bot.send_message(chat_id=update.effective_chat.id, 
+    text=f"Current jobs: {job_names}", reply_markup=reply_markup)
+    LOGGER.info(job_names)
     pass
+    
 
 def start(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, 
@@ -71,7 +89,8 @@ def button(update: Update, context: CallbackContext) -> None:
     elif "TaskID" in query.data:
         task_id = query.data.replace("TaskID", "")
         row = database.retrieve_task_data(update.effective_chat.id, task_id)
-        tasks.send_task(update, context, row)
+        keyboard, msg = tasks.task_message(update, context, row)
+        update.callback_query.edit_message_text(text=msg,  parse_mode=ParseMode.HTML, reply_markup=keyboard)
         pass
     elif "UpdateID" in query.data:
         task_id = query.data.replace("UpdateID", "")
@@ -86,6 +105,10 @@ def button(update: Update, context: CallbackContext) -> None:
         context.user_data["menu"] = "Update Name"
         context.bot.send_message(chat_id=update.effective_chat.id, 
         text="Send a new name.")
+    elif "JobID" in query.data:
+        task_id = query.data.replace("TaskID", "")
+        row = database.retrieve_task_data(update.effective_chat.id, task_id)
+        set_daily_job(update, context, row) #JOBS
     else:
         query.edit_message_text(text=f"Selected option: {query.data}")
 
@@ -94,7 +117,8 @@ def main() -> None:
     dispatcher.add_handler(nw.conv_handler)
     dispatcher.add_handler(CommandHandler('start', start))
     dispatcher.add_handler(CommandHandler('alltasks', tasks.all_tasks_message))
-    dispatcher.add_handler(CommandHandler('jobs', set_all_jobs))
+    dispatcher.add_handler(CommandHandler('jobs', set_all_jobs))    #JOBS
+    dispatcher.add_handler(CommandHandler('nojobs', stop_job_queue))#JOBS
     dispatcher.add_handler(CallbackQueryHandler(button))
     
     updater.start_polling()
