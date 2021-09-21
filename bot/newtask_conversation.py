@@ -121,7 +121,7 @@ def cancel(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
     LOGGER.info("User %s canceled the conversation.", user.first_name)
     update.message.reply_text(
-        'Bye! I hope we can talk again some day.', reply_markup=ReplyKeyboardRemove()
+        'Conversation cancelled.', reply_markup=ReplyKeyboardRemove()
     )
 
     return ConversationHandler.END

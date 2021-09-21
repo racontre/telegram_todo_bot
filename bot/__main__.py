@@ -8,63 +8,12 @@ from telegram.ext import (
     ConversationHandler
 )
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, ParseMode
-import datetime as dt
-import pytz #TypeError: Only timezones from the pytz library are supported
 from bot.config import BOT_TOKEN
 from bot import LOGGER, database, dispatcher, updater, bot
 import bot.newtask_conversation as nw
 import bot.tasks as tasks
 import bot.keyboards as keyboards
-
-def job_exists(update: Update, context: CallbackContext, task_id: int):
-    job_names = [job.name for job in context.job_queue.jobs()]
-    if f'{task_id}' in job_names:
-        LOGGER.info(f"Job ID {task_id} exists.")
-        return True
-    else:
-        LOGGER.info(f"Job ID {task_id} doesn't exist.")
-        return False
-    LOGGER.error('Unreachable code? in job_exists')
-
-def stop_job_queue(context: CallbackContext):
-    context.job_queue.stop()
-    pass
-
-def set_daily_job(update: Update, context: CallbackContext, row):
-    def callback_alarm(context: CallbackContext):
-        context.bot.task_message(chat_id=context.job.context, text='Test alarm')
-        keyboard, msg = tasks.task_message(context.job.context, context, row)
-        context.bot.send_message(text=task_string, 
-        parse_mode=ParseMode.HTML, reply_markup=keyboard)
-    if row is not []:
-        try:
-        ###
-            task_time = dt.datetime.strptime(row[tasks.TIME], "%H:%M")
-            local = pytz.timezone('Europe/Moscow') #get from db or user data
-            naive_dt = dt.datetime(year = 2000, month = 1, day = 1, 
-            hour=task_time.hour, minute=task_time.minute) #get h and m
-            local_dt = local.localize(naive_dt, is_dst = None)
-            utc_dt = local_dt.astimezone(pytz.utc)
-        ###
-            jobDaily = updater.job_queue.run_daily(callback_alarm, 
-            utc_dt.time(), days=(0, 1, 2, 3, 4, 5, 6), context=row[tasks.USER_ID], name = f'{row[tasks.TASK_ID]}')
-            LOGGER.info(f"UTC: {jobDaily.next_t}")
-        except Exception as e:
-            LOGGER.error(f'Could not set daily job: {e} . The task: {row}')
-
-
-def set_all_jobs(update: Update, context: CallbackContext):
-    records = database.retrieve_all_tasks(update.effective_chat.id)
-    if records != []:
-        for row in records:
-            if row[tasks.TIME] is not None and not job_exists(update, context, row[tasks.TASK_ID]):
-                set_daily_job(update, context, row)
-    job_names = [job.name for job in context.job_queue.jobs()]
-    context.bot.send_message(chat_id=update.effective_chat.id, 
-    text=f"Current jobs: {job_names}", reply_markup=reply_markup)
-    LOGGER.info(job_names)
-    pass
-    
+import bot.jobs as jobs
 
 def start(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.effective_chat.id, 
@@ -87,38 +36,43 @@ def button(update: Update, context: CallbackContext) -> None:
     elif query.data == "All Tasks":
         tasks.all_tasks_message(update, context)
     elif "TaskID" in query.data:
-        task_id = query.data.replace("TaskID", "")
+        task_id = query.data.replace("TaskID ", "")
         row = database.retrieve_task_data(update.effective_chat.id, task_id)
         keyboard, msg = tasks.task_message(update, context, row)
         update.callback_query.edit_message_text(text=msg,  parse_mode=ParseMode.HTML, reply_markup=keyboard)
         pass
     elif "UpdateID" in query.data:
-        task_id = query.data.replace("UpdateID", "")
+        task_id = query.data.replace("UpdateID ", "")
         tasks.update_message(update, context, task_id)
         pass
     elif "DeleteID" in query.data:
-        task_id = query.data.replace("DeleteID", "")
+        task_id = query.data.replace("DeleteID ", "")
         tasks.delete_task(update, task_id)
         pass
-    elif "UpdateName" in query.data:
-        task_id = query.data.replace("UpdateName", "")
+    elif "!" in query.data:
+        task_id = query.data.replace("UpdateName ", "")
         context.user_data["menu"] = "Update Name"
         context.bot.send_message(chat_id=update.effective_chat.id, 
         text="Send a new name.")
     elif "JobID" in query.data:
-        task_id = query.data.replace("TaskID", "")
-        row = database.retrieve_task_data(update.effective_chat.id, task_id)
-        set_daily_job(update, context, row) #JOBS
+        task_id = query.data.replace("JobID ", "")
+        exists = jobs.job_exists(update, context, task_id)
+        if not exists:
+            row = database.retrieve_task_data(update.effective_chat.id, task_id)
+            jobs.set_daily_job(update, context, row)
+        else:
+            jobs.stop_job_queue(update, context, task_id)
     else:
         query.edit_message_text(text=f"Selected option: {query.data}")
 
 def main() -> None:
     LOGGER.info("Bot Started!")
     dispatcher.add_handler(nw.conv_handler)
+    dispatcher.add_handler(tasks.update_conversation)
     dispatcher.add_handler(CommandHandler('start', start))
     dispatcher.add_handler(CommandHandler('alltasks', tasks.all_tasks_message))
-    dispatcher.add_handler(CommandHandler('jobs', set_all_jobs))    #JOBS
-    dispatcher.add_handler(CommandHandler('nojobs', stop_job_queue))#JOBS
+    dispatcher.add_handler(CommandHandler('set_jobs', jobs.set_all_jobs))    #JOBS
+    dispatcher.add_handler(CommandHandler('get_jobs', jobs.get_current_jobs))#JOBS
     dispatcher.add_handler(CallbackQueryHandler(button))
     
     updater.start_polling()
