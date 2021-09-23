@@ -18,22 +18,21 @@ from telegram.ext import (
     Updater,
     CommandHandler,
     MessageHandler,
-    CallbackQueryHandler, 
+    CallbackQueryHandler,
     Filters,
     ConversationHandler,
     CallbackContext,
 )
-from bot import LOGGER
-import bot.database as database
+from bot import LOGGER, database
 
 NAME, TIME, DESC = range(3)
-max_desc = 100
-max_name = 20
+MAX_DESC = 100
+MAX_NAME = 20
 
 def newtask(update: Update, context: CallbackContext) -> int:
     """Starts the conversation and asks the user about their gender."""
-    context.bot.send_message(chat_id=update.effective_chat.id, 
-    text=f'Hi! Enter the name of your new task. (max {max_name} characters) \n'
+    context.bot.send_message(chat_id=update.effective_chat.id,
+    text=f'Hi! Enter the name of your new task. (max {MAX_NAME} characters) \n'
         'Send /cancel to stop talking to me.\n\n')
     return NAME
 
@@ -57,7 +56,8 @@ def time(update: Update, context: CallbackContext) -> int:
     LOGGER.info("%s entered time: %s", user.first_name, update.message.text)
     context.user_data["time"] = update.message.text
     update.message.reply_text(
-        f'Gorgeous! Now, describe the task please, (max {max_desc} characters) or send /skip if you don\'t want to.'
+        f'Gorgeous! Now, describe the task please, (max {MAX_DESC} characters) '
+        'or send /skip if you don\'t want to.'
     )
 
     return DESC
@@ -69,7 +69,7 @@ def skip_time(update: Update, context: CallbackContext) -> int:
     context.user_data["time"] = ""
     LOGGER.info("User %s did not set time.", user.first_name)
     update.message.reply_text(
-        f'Now, describe your task please, (max {max_desc} characters) or send /skip.'
+        f'Now, describe your task please, (max {MAX_DESC} characters) or send /skip.'
     )
 
     return DESC
@@ -127,14 +127,14 @@ def cancel(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
     
 conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('newtask', newtask), 
+        entry_points=[CommandHandler('newtask', newtask),
             CallbackQueryHandler(callback  = newtask, pattern='^New Task?')],
         states={
-            NAME: [MessageHandler(Filters.regex(fr'^.{{1,{max_name}}}$') & ~Filters.command, name)],
-            TIME: [MessageHandler(Filters.regex('^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$') & ~Filters.command, time), 
+            NAME: [MessageHandler(Filters.regex(fr'^.{{1,{MAX_NAME}}}$') & ~Filters.command, name)],
+            TIME: [MessageHandler(Filters.regex('^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$') & ~Filters.command, time),
                     CommandHandler('skip', skip_time)
                     ],
-            DESC: [MessageHandler(Filters.regex(fr'^.{{1,{max_desc}}}$') & ~Filters.command, desc),
+            DESC: [MessageHandler(Filters.regex(fr'^.{{1,{MAX_DESC}}}$') & ~Filters.command, desc),
                     CommandHandler('skip', skip_desc)
                     ]
         },

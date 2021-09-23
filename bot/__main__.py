@@ -1,22 +1,17 @@
 from telegram.ext import (
-    Updater, 
-    CommandHandler, 
-    MessageHandler, 
-    Filters, 
-    CallbackQueryHandler, 
+    CommandHandler,
+    CallbackQueryHandler,
     CallbackContext,
-    ConversationHandler
 )
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, ParseMode
-from bot.config import BOT_TOKEN
-from bot import LOGGER, database, dispatcher, updater, bot
+from telegram import InlineKeyboardMarkup, Update, ParseMode
+from bot import LOGGER, database, dispatcher, updater
 import bot.newtask_conversation as nw
-import bot.tasks as tasks
-import bot.keyboards as keyboards
-import bot.jobs as jobs
+from bot import tasks
+from bot import keyboards
+from bot import jobs
 
 def start(update: Update, context: CallbackContext):
-    context.bot.send_message(chat_id=update.effective_chat.id, 
+    context.bot.send_message(chat_id=update.effective_chat.id,
     text="Hello, this is a todo bot.")
     context.user_data["menu"] = "MainMenu"
     database.create_user(update.effective_user.id, update.effective_user.first_name)
@@ -39,12 +34,12 @@ def button(update: Update, context: CallbackContext) -> None:
         task_id = query.data.replace("TaskID ", "")
         row = database.retrieve_task_data(update.effective_chat.id, task_id)
         keyboard, msg = tasks.task_message(update, context, row)
-        update.callback_query.edit_message_text(text=msg,  parse_mode=ParseMode.HTML, reply_markup=keyboard)
+        update.callback_query.edit_message_text(text=msg,  
+        parse_mode=ParseMode.HTML, reply_markup=keyboard)
         pass
     elif "UpdateID" in query.data:
         task_id = query.data.replace("UpdateID ", "")
         tasks.update_message(update, context, task_id)
-        pass
     elif "DeleteID" in query.data:
         task_id = query.data.replace("DeleteID ", "")
         tasks.delete_task(update, task_id)
@@ -52,7 +47,7 @@ def button(update: Update, context: CallbackContext) -> None:
     elif "!" in query.data:
         task_id = query.data.replace("UpdateName ", "")
         context.user_data["menu"] = "Update Name"
-        context.bot.send_message(chat_id=update.effective_chat.id, 
+        context.bot.send_message(chat_id=update.effective_chat.id,
         text="Send a new name.")
     elif "JobID" in query.data:
         task_id = query.data.replace("JobID ", "")
@@ -74,11 +69,11 @@ def main() -> None:
     dispatcher.add_handler(CommandHandler('set_jobs', jobs.set_all_jobs))    #JOBS
     dispatcher.add_handler(CommandHandler('get_jobs', jobs.get_current_jobs))#JOBS
     dispatcher.add_handler(CallbackQueryHandler(button))
-    
+
     updater.start_polling()
-    
+
     # Run the bot until the user presses Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT
     updater.idle()
-    
+
 main()
