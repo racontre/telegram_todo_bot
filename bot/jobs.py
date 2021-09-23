@@ -32,8 +32,7 @@ def set_daily_job(update: Update, context: CallbackContext, row):
         keyboard, msg = tasks.task_message(context.job.context, context, row)
         context.bot.send_message(chat_id=context.job.context, text=msg,
         parse_mode=ParseMode.HTML, reply_markup=keyboard)
-    if row is not [] and not job_exists(context, row[tasks.TASK_ID]) 
-    and row[tasks.TIME] is not None:
+    if not job_exists(context, row[tasks.TASK_ID]) and row[tasks.TIME] is not None:
         try:
         ###
             task_time = dt.datetime.strptime(row[tasks.TIME], "%H:%M")

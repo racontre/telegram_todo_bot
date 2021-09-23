@@ -15,8 +15,8 @@ def create_user(user_id: int, user_name: str):
         pass
 
 def create_task(user_id: int, task_title: str, due_date: str, desc: str):
-    sqlite_insert_query =
-    """INSERT INTO tasks (user_id, task_title, due_date, description) VALUES (?, ?, ?, ?)"""
+    sqlite_insert_query = """INSERT INTO tasks (user_id, task_title, due_date, description) 
+VALUES (?, ?, ?, ?)"""
     try:
         cursor.execute(sqlite_insert_query, (user_id, task_title, due_date, desc))
         conn.commit()
@@ -67,7 +67,7 @@ def update_task(column_name: str, user_id: int, task_id: int, name: str):
         conn.commit()
         LOGGER.info("Task ID %s has been updated. (%s)", task_id, column_name)
     except Exception as exception:
-        LOGGER.info("Unable to update %s for Task ID %s: %s", column_name, task_id exception)
+        LOGGER.info("Unable to update %s for Task ID %s: %s", column_name, task_id, exception)
 
 
 def delete_task_data(user_id: int, task_id: int):

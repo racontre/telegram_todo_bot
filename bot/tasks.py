@@ -59,7 +59,7 @@ def task_message(update: Update, context: CallbackContext, row):
             ],
                 [
                 #InlineKeyboardButton("✅ Mark as finished", 
-                callback_data=f'FinishedID {row[TASK_ID]}'),
+                #callback_data=f'FinishedID {row[TASK_ID]}'),
                 
                 InlineKeyboardButton("🚨 Turn the reminder on/off", 
                 callback_data=f'JobID {row[TASK_ID]}'),
