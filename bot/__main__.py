@@ -21,11 +21,11 @@ def start(update: Update, context: CallbackContext):
 def button(update: Update, context: CallbackContext) -> None:
     """Parses the CallbackQuery and updates the message text."""
     query = update.callback_query
-    
+
     # CallbackQueries need to be answered, even if no notification to the user is needed
     # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
     query.answer()
-    
+
     if query.data == "New Task":
         pass
     elif query.data == "All Tasks":
@@ -34,16 +34,15 @@ def button(update: Update, context: CallbackContext) -> None:
         task_id = query.data.replace("TaskID ", "")
         row = database.retrieve_task_data(update.effective_chat.id, task_id)
         keyboard, msg = tasks.task_message(update, context, row)
-        update.callback_query.edit_message_text(text=msg,  
+        update.callback_query.edit_message_text(text=msg, 
         parse_mode=ParseMode.HTML, reply_markup=keyboard)
-        pass
     elif "UpdateID" in query.data:
         task_id = query.data.replace("UpdateID ", "")
         tasks.update_message(update, context, task_id)
     elif "DeleteID" in query.data:
         task_id = query.data.replace("DeleteID ", "")
         tasks.delete_task(update, task_id)
-        pass
+
     elif "!" in query.data:
         task_id = query.data.replace("UpdateName ", "")
         context.user_data["menu"] = "Update Name"
@@ -51,7 +50,7 @@ def button(update: Update, context: CallbackContext) -> None:
         text="Send a new name.")
     elif "JobID" in query.data:
         task_id = query.data.replace("JobID ", "")
-        exists = jobs.job_exists(update, context, task_id)
+        exists = jobs.job_exists(context, task_id)
         if not exists:
             row = database.retrieve_task_data(update.effective_chat.id, task_id)
             jobs.set_daily_job(update, context, row)

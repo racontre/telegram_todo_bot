@@ -30,7 +30,7 @@ def all_tasks_message(update: Update, context: CallbackContext):
     else:
         context.bot.send_message(chat_id=update.effective_chat.id,
         text="You don't have any tasks yet")
-    
+
 def update_message(update: Update, context: CallbackContext):
     context.user_data["task_id"] = update.callback_query.data.replace("UpdateID ", "")
     print(context.user_data["task_id"])
@@ -58,8 +58,11 @@ def task_message(update: Update, context: CallbackContext, row):
                 InlineKeyboardButton("🗑 Delete", callback_data=f'DeleteID {row[TASK_ID]}')
             ],
                 [
-                #InlineKeyboardButton("✅ Mark as finished", callback_data=f'FinishedID {row[TASK_ID]}'),
-                InlineKeyboardButton("🚨 Turn the reminder on/off", callback_data=f'JobID {row[TASK_ID]}'),
+                #InlineKeyboardButton("✅ Mark as finished", 
+                callback_data=f'FinishedID {row[TASK_ID]}'),
+                
+                InlineKeyboardButton("🚨 Turn the reminder on/off", 
+                callback_data=f'JobID {row[TASK_ID]}'),
                 ]
             ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -70,6 +73,7 @@ def task_message(update: Update, context: CallbackContext, row):
         return reply_markup, task_string
     context.bot.send_message(chat_id=update.effective_chat.id,
         text="Could not output the task")
+    return None
 
 def delete_task(update: Update, task_id: int):
     """ Deletes a single task from the database """
@@ -83,29 +87,32 @@ def update_name(update: Update, context: CallbackContext):
     #name = update.message.from_user
     #database.update_task('name', update.effective_chat.id, task_id, name)
     context.bot.send_message(chat_id=update.effective_chat.id,
-    text=f'Hi! Enter the name of your new task. (max {nw.MAX_NAME} characters) \n'
+    text=f'Hi! Enter the new name of your task. (max {nw.MAX_NAME} characters) \n'
     'Send /cancel to stop talking to me.\n\n')
     return UPDATE
 
-def update_state(update: Update, context: CallbackContext):
-    pass
-    
+#def update_state(update: Update, context: CallbackContext):
+#    pass
+
 def update_desc(update: Update, context: CallbackContext, task_id: int):
     desc = update.message.from_user
-    database.update_task('desc', update.effective_chat.id, task_id, name)
+    context.bot.send_message(chat_id=update.effective_chat.id,
+    text=f'Hi! Enter the new desc of your task. (max {nw.MAX_DESC} characters) \n'
+    'Send /cancel to stop talking to me.\n\n')
+    database.update_task('desc', update.effective_chat.id, task_id, desc)
 
 def update_time(update: Update, context: CallbackContext, time: str):
     time = update.message.from_user
     database.update_task('time', update.effective_chat.id, task_id, name)
 
 def update_task(update: Update, context: CallbackContext):
-    input = update.message.text
+    user_input = update.message.text
     task_id = context.user_data["task_id"]
-    LOGGER.info(f"{task_id}'s new name is {input}")
+    LOGGER.info("%s's new name is %s", task_id, user_input)
     return ConversationHandler.END
 
 update_conversation = ConversationHandler(
-        entry_points=[CallbackQueryHandler(callback = update_message, pattern=r'^UpdateID \d+$'), 
+        entry_points=[CallbackQueryHandler(callback = update_message, pattern=r'^UpdateID \d+$'),
         CallbackQueryHandler(callback = update_name, pattern=r'^UpdateName \d+$')],
         states={
             UPDATE: [MessageHandler(Filters.text, callback = update_task)],
