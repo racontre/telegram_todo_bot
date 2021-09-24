@@ -13,7 +13,7 @@ Press Ctrl-C on the command line or send a signal to the process to stop the
 bot.
 """
 
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
+from telegram import ReplyKeyboardRemove, Update
 from telegram.ext import (
     Updater,
     CommandHandler,
@@ -104,10 +104,11 @@ def save_task(update: Update, context: CallbackContext) -> int:
     user_id = update.effective_chat.id
     task_title = context.user_data['name']
     due_date = context.user_data['time']
-    desc = context.user_data['desc']
-    if (database.create_task(user_id, task_title, due_date, desc)):
+    description = context.user_data['desc']
+    if database.create_task(user_id, task_title, due_date, description):
         update.message.reply_text(
-            'Done. To turn on the reminders use the /job command.'
+            'Done. To turn on the reminders, find the task on the All Tasks' 
+            'menu and choose the option to turn on the reminder.'
         )
     else:
         update.message.reply_text(
@@ -125,7 +126,7 @@ def cancel(update: Update, context: CallbackContext) -> int:
     )
 
     return ConversationHandler.END
-    
+
 conv_handler = ConversationHandler(
         entry_points=[CommandHandler('newtask', newtask),
             CallbackQueryHandler(callback  = newtask, pattern='^New Task?')],
